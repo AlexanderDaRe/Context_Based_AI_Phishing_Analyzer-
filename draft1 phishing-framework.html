@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phishing Simulation Framework — Group 26</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #070b0f;
+    --surface:   #0d1318;
+    --card:      #111820;
+    --border:    #1e2d3d;
+    --accent:    #00c8ff;
+    --accent2:   #ff4757;
+    --accent3:   #ffa502;
+    --green:     #2ed573;
+    --muted:     #4a6070;
+    --text:      #c8d8e4;
+    --text-dim:  #7a99b0;
+    --mono:      'Share Tech Mono', monospace;
+    --head:      'Rajdhani', sans-serif;
+    --body:      'Barlow Condensed', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* ── HEADER ── */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 28px;
+    margin-bottom: 40px;
+    position: relative;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0;
+    width: 220px; height: 1px;
+    background: var(--accent);
+  }
+  .top-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    opacity: 0.8;
+  }
+  h1 {
+    font-family: var(--head);
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 700;
+    letter-spacing: 1px;
+    line-height: 1.1;
+    color: #e8f4ff;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    letter-spacing: 1px;
+  }
+  .meta-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border: 1px solid;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .tag.ext { border-color: var(--accent3); color: var(--accent3); }
+  .tag.int { border-color: var(--accent); color: var(--accent); }
+  .tag.trust { border-color: var(--green); color: var(--green); }
+  .tag.sim { border-color: var(--muted); color: var(--muted); }
+
+  /* ── SECTION TITLE ── */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    opacity: 0.7;
+  }
+  h2 {
+    font-family: var(--head);
+    font-size: 22px;
+    font-weight: 700;
+    color: #ddeeff;
+    letter-spacing: 0.5px;
+    margin-bottom: 18px;
+  }
+
+  /* ── PERSONAS BLOCK ── */
+  .personas-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  @media(max-width:640px){ .personas-grid { grid-template-columns: 1fr; } }
+
+  .persona-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 22px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .persona-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+  }
+  .persona-card.attacker::before { background: var(--accent2); }
+  .persona-card.target::before  { background: var(--accent); }
+
+  .persona-role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .persona-card.attacker .persona-role { color: var(--accent2); }
+  .persona-card.target .persona-role   { color: var(--accent); }
+
+  .persona-name {
+    font-family: var(--head);
+    font-size: 20px;
+    font-weight: 700;
+    color: #e8f4ff;
+    margin-bottom: 4px;
+  }
+  .persona-title {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    font-style: italic;
+  }
+  .persona-detail {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    display: flex;
+    gap: 8px;
+  }
+  .persona-detail strong { color: var(--text); font-weight: 600; min-width: 90px; }
+
+  /* ── PHASE BLOCKS ── */
+  .phase {
+    background: var(--card);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .phase-header:hover { background: rgba(0,200,255,0.04); }
+
+  .phase-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(0,200,255,0.08);
+    border: 1px solid rgba(0,200,255,0.2);
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 1px;
+  }
+  .phase-name {
+    font-family: var(--head);
+    font-size: 17px;
+    font-weight: 700;
+    color: #ddeeff;
+    flex: 1;
+    letter-spacing: 0.3px;
+  }
+  .phase-type {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px solid;
+  }
+  .phase-type.ext   { color: var(--accent3); border-color: var(--accent3); }
+  .phase-type.int   { color: var(--accent);  border-color: var(--accent);  }
+  .phase-type.both  { color: var(--green);   border-color: var(--green);   }
+  .phase-type.prep  { color: var(--muted);   border-color: var(--muted);   }
+
+  .chevron {
+    color: var(--muted);
+    font-size: 12px;
+    transition: transform 0.25s;
+  }
+  .phase.open .chevron { transform: rotate(90deg); }
+
+  .phase-body {
+    display: none;
+    padding: 20px 22px 24px;
+  }
+  .phase.open .phase-body { display: block; }
+
+  /* sub-sections inside phase */
+  .step-group { margin-bottom: 22px; }
+  .step-group:last-child { margin-bottom: 0; }
+
+  .step-group-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,165,2,0.15);
+  }
+
+  .step {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+  .step-icon {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(0,200,255,0.06);
+    border: 1px solid rgba(0,200,255,0.15);
+    padding: 2px 6px;
+    white-space: nowrap;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .step-text {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .step-text em {
+    color: var(--text-dim);
+    font-style: normal;
+    font-size: 12px;
+    display: block;
+    margin-top: 2px;
+  }
+
+  /* email preview */
+  .email-preview {
+    background: #080e14;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    padding: 16px 18px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .email-preview .field { color: var(--muted); }
+  .email-preview .value { color: var(--text); }
+  .email-preview .body-text { color: var(--text-dim); margin-top: 10px; line-height: 1.7; }
+  .email-preview .highlight { color: var(--accent3); }
+
+  /* internal email variant */
+  .email-preview.internal { border-left-color: var(--accent); }
+
+  /* trust chain diagram */
+  .trust-chain {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 14px 0;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .trust-node {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .trust-node.compromised { border-color: var(--accent2); color: var(--accent2); background: rgba(255,71,87,0.06); }
+  .trust-node.target      { border-color: var(--accent);  color: var(--accent);  background: rgba(0,200,255,0.06); }
+  .trust-arrow {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent3);
+    padding: 0 4px;
+  }
+
+  /* metrics row */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px,1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .metric-val {
+    font-family: var(--mono);
+    font-size: 22px;
+    color: var(--accent);
+    display: block;
+  }
+  .metric-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* warning block */
+  .warning {
+    border: 1px solid rgba(255,71,87,0.3);
+    background: rgba(255,71,87,0.05);
+    padding: 12px 16px;
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .warning-icon { color: var(--accent2); font-size: 13px; flex-shrink: 0; margin-top: 1px; font-family: var(--mono); }
+  .warning-text { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+  /* ── SCENARIO TABLE ── */
+  .scenario-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  .scenario-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .scenario-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+    color: var(--text);
+    vertical-align: top;
+  }
+  .scenario-table tr:last-child td { border-bottom: none; }
+  .scenario-table tr:hover td { background: rgba(0,200,255,0.03); }
+
+  .risk-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .risk-badge.high   { background: rgba(255,71,87,0.12); color: var(--accent2); border: 1px solid rgba(255,71,87,0.3); }
+  .risk-badge.med    { background: rgba(255,165,2,0.10); color: var(--accent3); border: 1px solid rgba(255,165,2,0.3); }
+  .risk-badge.low    { background: rgba(0,200,255,0.08); color: var(--accent);  border: 1px solid rgba(0,200,255,0.25); }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 36px 0;
+    position: relative;
+  }
+  .divider::after {
+    content: attr(data-label);
+    position: absolute;
+    left: 0; top: -8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: var(--bg);
+    padding-right: 12px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ── ANIMATION ── */
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(14px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .phase { animation: fadeUp 0.4s ease both; }
+  .phase:nth-child(1){ animation-delay: 0.05s }
+  .phase:nth-child(2){ animation-delay: 0.10s }
+  .phase:nth-child(3){ animation-delay: 0.15s }
+  .phase:nth-child(4){ animation-delay: 0.20s }
+  .phase:nth-child(5){ animation-delay: 0.25s }
+  .phase:nth-child(6){ animation-delay: 0.30s }
+  .phase:nth-child(7){ animation-delay: 0.35s }
+
+  /* open all / collapse all */
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    justify-content: flex-end;
+  }
+  .ctrl-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="top-label">// INFO49402 &nbsp;|&nbsp; Group 26 &nbsp;|&nbsp; Capstone Project</div>
+    <h1>AI-Assisted <span>Phishing</span><br>Simulation Framework</h1>
+    <div class="subtitle">DRAFT v0.1 &nbsp;|&nbsp; FOR AUTHORIZED SIMULATION USE ONLY &nbsp;|&nbsp; CONTROLLED ENVIRONMENT</div>
+    <div class="meta-tags">
+      <span class="tag ext">External Direct-Send</span>
+      <span class="tag int">Internal Spear Phish</span>
+      <span class="tag trust">Trust Relationship Exploitation</span>
+      <span class="tag sim">Simulated Org</span>
+    </div>
+  </div>
+
+  <!-- PERSONAS -->
+  <div class="section-label">// 01 &nbsp; Simulated Personas</div>
+  <h2>Fabricated Employee Profiles</h2>
+  <div class="personas-grid">
+    <div class="persona-card attacker">
+      <div class="persona-role">&#9670; Attacker-Controlled Persona</div>
+      <div class="persona-name">Marcus Webb</div>
+      <div class="persona-title">Senior IT Infrastructure Analyst</div>
+      <div class="persona-detail"><strong>Email:</strong> m.webb@[simorg].internal</div>
+      <div class="persona-detail"><strong>Department:</strong> IT Operations</div>
+      <div class="persona-detail"><strong>Access:</strong> Broad internal tooling, shared drives, ticketing system</div>
+      <div class="persona-detail"><strong>Trust Level:</strong> High — routinely contacts all departments for system requests</div>
+      <div class="persona-detail"><strong>Role in sim:</strong> Compromised / Attacker-controlled. Used to send internal trust-based phishing to Claire.</div>
+    </div>
+    <div class="persona-card target">
+      <div class="persona-role">&#9670; Target Persona</div>
+      <div class="persona-name">Claire Fontaine</div>
+      <div class="persona-title">Finance &amp; Accounts Payable Coordinator</div>
+      <div class="persona-detail"><strong>Email:</strong> c.fontaine@[simorg].internal</div>
+      <div class="persona-detail"><strong>Department:</strong> Finance</div>
+      <div class="persona-detail"><strong>Access:</strong> ERP system, payment portals, vendor records</div>
+      <div class="persona-detail"><strong>Trust Level:</strong> Trusts IT comms implicitly — handles all IT-requested credential resets</div>
+      <div class="persona-detail"><strong>Role in sim:</strong> Primary internal target. High-value due to financial system access.</div>
+    </div>
+  </div>
+
+  <div class="trust-chain">
+    <div class="trust-node">External Threat Actor</div>
+    <div class="trust-arrow">&#8594; spoof/compromise &#8594;</div>
+    <div class="trust-node compromised">Marcus Webb (IT)</div>
+    <div class="trust-arrow">&#8594; internal trust exploit &#8594;</div>
+    <div class="trust-node target">Claire Fontaine (Finance)</div>
+    <div class="trust-arrow">&#8594; credential/click</div>
+  </div>
+
+  <div class="divider" data-label="// phases"></div>
+
+  <!-- PHASES -->
+  <div class="section-label">// 02 &nbsp; Simulation Phases</div>
+  <h2>Phishing Execution Framework</h2>
+
+  <div class="controls">
+    <button class="ctrl-btn" onclick="setAll(true)">Expand All</button>
+    <button class="ctrl-btn" onclick="setAll(false)">Collapse All</button>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="phase open" onclick="toggle(this)">
+    <div class="phase-header">
+      <div class="phase-num">01</div>
+      <div class="phase-name">Pre-Engagement &amp; Scoping</div>
+      <div class="phase-type prep">PREP</div>
+      <div class="chevron">&#9654;</div>
+    </div>
+    <div class="phase-body">
+      <div class="step-group">
+        <div class="step-group-title">Objectives Definition</div>
+        <div class="step">
+          <div class="step-icon">OBJ</div>
+          <div class="step-text">Define simulation goals: click-rate measurement, credential harvest rate, detection latency, and AI detection accuracy vs. human awareness.
+            <em>Both external and internal phishing vectors in scope.</em>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">OBJ</div>
+          <div class="step-text">Establish success criteria: baseline detection rate prior to AI-assisted analysis deployment vs. post-deployment.
+          </div>
+        </div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Scope Boundaries</div>
+        <div class="step">
+          <div class="step-icon">SCO</div>
+          <div class="step-text">Simulated org environment only. All emails routed through controlled mail infrastructure — no real external MX targets.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">SCO</div>
+          <div class="step-text">Target roles in scope: Finance (Claire), IT (Marcus), any additional synthetic employees added per sprint.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">SCO</div>
+          <div class="step-text">Credentials captured must be synthetic (fake portal). No real credentials ever collected or stored.
+          </div>
+        </div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Infrastructure Prep</div>
+        <div class="step">
+          <div class="step-icon">INF</div>
+          <div class="step-text">Stand up simulated mail server (e.g. Postfix/Mailhog or similar). Configure both internal domain and spoofed external domains.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">INF</div>
+          <div class="step-text">Deploy fake landing pages: credential harvest page, fake document portal, fake IT helpdesk portal.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">INF</div>
+          <div class="step-text">Pipe all phishing activity into Ollama ingestion pipeline for real-time AI analysis logging.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="phase" onclick="toggle(this)">
+    <div class="phase-header">
+      <div class="phase-num">02</div>
+      <div class="phase-name">External Direct-Send Phishing</div>
+      <div class="phase-type ext">EXTERNAL</div>
+      <div class="chevron">&#9654;</div>
+    </div>
+    <div class="phase-body">
+      <div class="step-group">
+        <div class="step-group-title">Attack Vector</div>
+        <div class="step">
+          <div class="step-icon">VEC</div>
+          <div class="step-text">Sender spoofs a known external vendor, SaaS provider, or partner organization. Email arrives from outside the simulated org domain.
+            <em>Goal: test whether AI detects spoofed external sender headers, mismatched reply-to, and suspicious infrastructure.</em>
+          </div>
+        </div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Scenario Types</div>
+        <div class="step">
+          <div class="step-icon">S-1</div>
+          <div class="step-text"><strong>Vendor Invoice Lure</strong> — Email impersonating a known supplier requesting updated payment details via a link.
+            <em>Target: Claire Fontaine (Finance). High plausibility given her AP role.</em>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">S-2</div>
+          <div class="step-text"><strong>SaaS Password Reset</strong> — Spoofed notification from a fake cloud tool (e.g. "DocuSign", "ServiceNow") requesting re-authentication.
+            <em>Target: Both Marcus and Claire. Generic enough to apply broadly.</em>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">S-3</div>
+          <div class="step-text"><strong>HR / Payroll Update</strong> — Fake external HR portal asking employee to confirm direct deposit details.
+            <em>Target: Claire. Exploits financial data anxiety.</em>
+          </div>
+        </div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Sample External Email — Vendor Invoice Lure</div>
+        <div class="email-preview">
+          <span class="field">FROM:    </span><span class="value">billing@techsupply-invoices.net</span><br>
+          <span class="field">REPLY-TO:</span><span class="value">ar@techsupply-invoices.net</span><br>
+          <span class="field">TO:      </span><span class="value">c.fontaine@[simorg].internal</span><br>
+          <span class="field">SUBJECT: </span><span class="value highlight">ACTION REQUIRED: Invoice #INV-2024-0381 — Updated Payment Portal</span><br>
+          <span class="field">DATE:    </span><span class="value">[Simulated Date]</span>
+          <div class="body-text">
+            Hi Claire,<br><br>
+            Please be advised that our payment processing portal has migrated to a new platform. To ensure your next payment processes without delay, we ask that you verify your vendor payment details via the link below before [DATE+3].<br><br>
+            <span class="highlight">[ Verify Payment Details ]</span>  &lt;http://techsupply-invoices.net/portal/verify&gt;<br><br>
+            If you have any questions, contact your account manager.<br><br>
+            Regards,<br>
+            Accounts Receivable Team<br>
+            TechSupply Ltd.
+          </div>
+        </div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Detection Indicators (Feed to AI)</div>
+        <div class="step">
+          <div class="step-icon">IOC</div>
+          <div class="step-text">Sender domain not in known vendor whitelist. Reply-to domain mismatch. No DKIM/SPF alignment. Urgency language + financial action requested. Link domain registered recently.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="phase" onclick="toggle(this)">
+    <div class="phase-header">
+      <div class="phase-num">03</div>
+      <div class="phase-name">Internal Trust-Based Phishing</div>
+      <div class="phase-type int">INTERNAL</div>
+      <div class="chevron">&#9654;</div>
+    </div>
+    <div class="phase-body">
+      <div class="step-group">
+        <div class="step-group-title">Trust Relationship Model</div>
+        <div class="step">
+          <div class="step-icon">TRS</div>
+          <div class="step-text">Marcus Webb (IT) has an established communication pattern with Claire Fontaine (Finance). Routine requests include system access resets, drive permission changes, and MFA prompts.
+            <em>This trust relationship is the primary exploitation vector for internal phishing.</em>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">TRS</div>
+          <div class="step-text">Emails from Marcus to Claire arrive from a legitimate internal domain, pass SPF/DKIM, and match historical communication patterns — making technical detection harder and contextual AI analysis critical.
+          </div>
+        </div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Scenario Types</div>
+        <div class="step">
+          <div class="step-icon">S-4</div>
+          <div class="step-text"><strong>IT Credential Reset Request</strong> — Marcus sends Claire a link to a fake internal IT portal to reset her ERP credentials due to a "security audit."
+            <em>Exploits IT authority + urgency. Claire expects this type of request.</em>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">S-5</div>
+          <div class="step-text"><strong>Shared Document Lure</strong> — Marcus sends a link to a fake SharePoint/OneDrive document requesting Claire review and sign off on an "infrastructure cost report."
+            <em>Exploits normal file-sharing workflow between IT and Finance.</em>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">S-6</div>
+          <div class="step-text"><strong>MFA Fatigue + Callback</strong> — Marcus emails Claire that she will receive an MFA push as part of a "routine security check" and to approve it.
+            <em>Primes target to approve a real MFA push. Tests behavioral conditioning.</em>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">S-7</div>
+          <div class="step-text"><strong>Impersonation Escalation</strong> — Attacker-controlled Marcus account emails Claire claiming her manager has approved an urgent wire transfer and asks her to initiate via a linked portal.
+            <em>BEC-style attack. High financial impact scenario. Tests multi-authority trust exploitation.</em>
+          </div>
+        </div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Sample Internal Email — IT Credential Reset</div>
+        <div class="email-preview internal">
+          <span class="field">FROM:    </span><span class="value">m.webb@[simorg].internal</span><br>
+          <span class="field">TO:      </span><span class="value">c.fontaine@[simorg].internal</span><br>
+          <span class="field">SUBJECT: </span><span class="value highlight">URGENT: ERP Access Reset Required — Security Compliance Window Closes Today</span><br>
+          <span class="field">DATE:    </span><span class="value">[Simulated Date]</span>
+          <div class="body-text">
+            Hi Claire,<br><br>
+            As part of our quarterly security compliance review, IT is resetting ERP credentials for all Finance users today. You will need to reset your password before 5:00 PM or your account will be temporarily suspended pending manual review.<br><br>
+            Please use the internal IT portal to complete this now:<br>
+            <span class="highlight">[ Reset ERP Credentials ]</span>  &lt;http://it-helpdesk.[simorg].internal/reset&gt;<br><br>
+            Let me know if you run into any issues — happy to jump on a call.<br><br>
+            Thanks,<br>
+            Marcus Webb<br>
+            Senior IT Infrastructure Analyst
+          </div>
+        </div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Detection Indicators (Feed to AI)</div>
+        <div class="step">
+          <div class="step-icon">IOC</div>
+          <div class="step-text">Unusual urgency in normally routine IT communication. Credential action requested via link rather than standard IT ticketing. Timing anomaly (outside business hours or new behavior for Marcus). Link destination inconsistent with known IT portal URL patterns.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-icon">IOC</div>
+          <div class="step-text">Contextual AI flag: Marcus has not sent credential-related links to Claire in simulated communication history. Writing style delta detectable via baseline behavioral model.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="phase" onclick="toggle(this)">
+    <div class="phase-header">
+      <div class="phase-num">04</div>
+      <div class="phase-name">AI Detection &amp; Analysis Pipeline</div>
+      <div class="phase-type both">BOTH VECTORS</div>
+      <div class="chevron">&#9654;</div>
+    </div>
+    <div class="phase-body">
+      <div class="step-group">
+        <div class="step-group-title">Layer 1 — Technical Header Analysis</div>
+        <div class="step"><div class="step-icon">L1</div><div class="step-text">SPF / DKIM / DMARC alignment check. Flag mismatches between From, Reply-To, and Return-Path.</div></div>
+        <div class="step"><div class="step-icon">L1</div><div class="step-text">Sender domain age lookup and reputation scoring. Geo-IP analysis on sending server.</div></div>
+        <div class="step"><div class="step-icon">L1</div><div class="step-text">Embedded URL extraction and domain analysis: homoglyph detection, newly registered domains, URL redirects.</div></div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Layer 2 — Metadata &amp; Behavioural Analysis</div>
+        <div class="step"><div class="step-icon">L2</div><div class="step-text">Sender-recipient communication frequency baseline. Flag first-contact or low-frequency sender requesting high-risk actions.</div></div>
+        <div class="step"><div class="step-icon">L2</div><div class="step-text">Send-time anomaly detection: emails outside normal working patterns for the sender persona.</div></div>
+        <div class="step"><div class="step-icon">L2</div><div class="step-text">Attachment type and metadata inspection if applicable.</div></div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Layer 3 — Ollama / LLM Contextual Analysis</div>
+        <div class="step"><div class="step-icon">L3</div><div class="step-text">Full email body passed to LLM for contextual risk scoring. Prompt includes: sender role, recipient role, communication history context, and email body.
+          <em>LLM asked to assess: urgency manipulation, authority exploitation, request type risk, and writing style anomalies.</em>
+        </div></div>
+        <div class="step"><div class="step-icon">L3</div><div class="step-text">Writing style baseline comparison for internal senders (Marcus). Deviation from established patterns triggers elevated risk flag.</div></div>
+        <div class="step"><div class="step-icon">L3</div><div class="step-text">Multi-factor risk score output: Technical Risk (L1) + Behavioural Risk (L2) + Contextual Risk (L3) = Composite Phishing Confidence Score.</div></div>
+      </div>
+      <div class="metrics-row">
+        <div class="metric"><span class="metric-val">L1</span><span class="metric-label">Technical</span></div>
+        <div class="metric"><span class="metric-val">L2</span><span class="metric-label">Behavioral</span></div>
+        <div class="metric"><span class="metric-val">L3</span><span class="metric-label">Contextual</span></div>
+        <div class="metric"><span class="metric-val">&#8721;</span><span class="metric-label">Composite Score</span></div>
+        <div class="metric"><span class="metric-val">&#9650;</span><span class="metric-label">Alert / Flag</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 5 -->
+  <div class="phase" onclick="toggle(this)">
+    <div class="phase-header">
+      <div class="phase-num">05</div>
+      <div class="phase-name">Escalating Scenario Testing</div>
+      <div class="phase-type int">INTERNAL</div>
+      <div class="chevron">&#9654;</div>
+    </div>
+    <div class="phase-body">
+      <div class="step-group">
+        <div class="step-group-title">Escalation Logic</div>
+        <div class="step"><div class="step-icon">ESC</div><div class="step-text">Start with low-suspicion internal emails (Marcus to Claire, routine-looking). Gradually introduce anomalies: urgency, unusual link, credential request, financial action.
+          <em>Tests AI detection sensitivity and false-positive rate at each escalation tier.</em>
+        </div></div>
+        <div class="step"><div class="step-icon">ESC</div><div class="step-text">Each tier logged with AI confidence score. Track at which escalation level the AI correctly flags vs. misses.</div></div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Escalation Tiers</div>
+        <table class="scenario-table">
+          <thead>
+            <tr>
+              <th>Tier</th>
+              <th>Scenario</th>
+              <th>Anomaly Level</th>
+              <th>Expected Detection</th>
+              <th>Risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>T0</td>
+              <td>Routine IT update email, no link</td>
+              <td>None (baseline)</td>
+              <td>Not flagged</td>
+              <td><span class="risk-badge low">LOW</span></td>
+            </tr>
+            <tr>
+              <td>T1</td>
+              <td>IT email with internal link to known portal</td>
+              <td>Minimal</td>
+              <td>Not flagged</td>
+              <td><span class="risk-badge low">LOW</span></td>
+            </tr>
+            <tr>
+              <td>T2</td>
+              <td>IT email with urgency + credential reset link</td>
+              <td>Moderate</td>
+              <td>AI flags L2+L3</td>
+              <td><span class="risk-badge med">MED</span></td>
+            </tr>
+            <tr>
+              <td>T3</td>
+              <td>IT email with unknown link + financial action</td>
+              <td>High</td>
+              <td>AI flags all layers</td>
+              <td><span class="risk-badge high">HIGH</span></td>
+            </tr>
+            <tr>
+              <td>T4</td>
+              <td>BEC-style wire transfer request via Marcus</td>
+              <td>Critical</td>
+              <td>Maximum risk score</td>
+              <td><span class="risk-badge high">HIGH</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 6 -->
+  <div class="phase" onclick="toggle(this)">
+    <div class="phase-header">
+      <div class="phase-num">06</div>
+      <div class="phase-name">Logging, Evidence &amp; Metrics Collection</div>
+      <div class="phase-type both">BOTH VECTORS</div>
+      <div class="chevron">&#9654;</div>
+    </div>
+    <div class="phase-body">
+      <div class="step-group">
+        <div class="step-group-title">Data Captured Per Email</div>
+        <div class="step"><div class="step-icon">LOG</div><div class="step-text">Raw email headers, body text, embedded URLs, sender metadata.</div></div>
+        <div class="step"><div class="step-icon">LOG</div><div class="step-text">AI analysis output: per-layer scores, final composite score, flagged indicators, reasoning summary from LLM.</div></div>
+        <div class="step"><div class="step-icon">LOG</div><div class="step-text">Simulated user response: clicked link / submitted credentials / reported email / no action. Timestamp recorded.</div></div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">Key Metrics Tracked</div>
+        <div class="step"><div class="step-icon">MET</div><div class="step-text">True positive rate: phishing emails correctly flagged by AI.</div></div>
+        <div class="step"><div class="step-icon">MET</div><div class="step-text">False positive rate: legitimate emails incorrectly flagged.</div></div>
+        <div class="step"><div class="step-icon">MET</div><div class="step-text">Detection latency: time from email ingestion to alert generation.</div></div>
+        <div class="step"><div class="step-icon">MET</div><div class="step-text">Internal vs. external detection accuracy delta: does AI perform differently on trust-based internal phishing vs. external spoofs?</div></div>
+        <div class="step"><div class="step-icon">MET</div><div class="step-text">Escalation tier at which AI detection fires: sensitivity curve across Tiers 0–4.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 7 -->
+  <div class="phase" onclick="toggle(this)">
+    <div class="phase-header">
+      <div class="phase-num">07</div>
+      <div class="phase-name">Reporting &amp; AI Tuning</div>
+      <div class="phase-type prep">ANALYSIS</div>
+      <div class="chevron">&#9654;</div>
+    </div>
+    <div class="phase-body">
+      <div class="step-group">
+        <div class="step-group-title">Post-Simulation Analysis</div>
+        <div class="step"><div class="step-icon">RPT</div><div class="step-text">Compile detection results per scenario. Map false negatives to specific anomaly types the AI missed — feed back into prompt tuning or model context adjustments.</div></div>
+        <div class="step"><div class="step-icon">RPT</div><div class="step-text">Compare internal (trust-based) vs. external detection accuracy. Document where contextual relationship modeling adds detection value beyond technical-only signals.</div></div>
+        <div class="step"><div class="step-icon">RPT</div><div class="step-text">Produce findings report with: scenario descriptions, AI output per email, detection accuracy summary, recommended model improvements.</div></div>
+      </div>
+      <div class="step-group">
+        <div class="step-group-title">AI Tuning Cycle</div>
+        <div class="step"><div class="step-icon">TUN</div><div class="step-text">Adjust Ollama prompt context: refine sender-recipient relationship description, update communication history context, tune risk scoring thresholds.</div></div>
+        <div class="step"><div class="step-icon">TUN</div><div class="step-text">Re-run same phishing scenarios post-tuning. Measure improvement in composite score accuracy.</div></div>
+        <div class="step"><div class="step-icon">TUN</div><div class="step-text">Document tuning changes and detection delta for final capstone presentation.</div></div>
+      </div>
+      <div class="warning">
+        <div class="warning-icon">! NOTE</div>
+        <div class="warning-text">All simulation data, synthetic credentials, phishing email samples, and LLM outputs are for authorized academic research only. No real employees, credentials, or production systems involved. All personas and organizations are entirely fabricated.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>GROUP 26 &nbsp;|&nbsp; INFO49402 &nbsp;|&nbsp; DRAFT v0.1</span>
+    <span>MELISSA BRATIC &bull; JOSH CALLAGHA &bull; ALEXANDER DA RE &bull; JAMES PAUGH</span>
+    <span>FOR AUTHORIZED SIMULATION USE ONLY</span>
+  </div>
+
+</div>
+
+<script>
+  function toggle(el) {
+    // stop if clicking on inner links/buttons
+    if (event.target.tagName === 'A' || event.target.tagName === 'BUTTON') return;
+    el.classList.toggle('open');
+  }
+  function setAll(open) {
+    document.querySelectorAll('.phase').forEach(p => {
+      open ? p.classList.add('open') : p.classList.remove('open');
+    });
+  }
+</script>
+</body>
+</html>
