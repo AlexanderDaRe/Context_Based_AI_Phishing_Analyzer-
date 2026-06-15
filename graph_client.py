@@ -1,3 +1,9 @@
+"""
+shared/graph_client.py
+Thin wrapper around Microsoft Graph for reading inbox messages.
+Uses client-credentials flow (app-only) so no user interaction is needed.
+"""
+
 import os
 import logging
 import requests

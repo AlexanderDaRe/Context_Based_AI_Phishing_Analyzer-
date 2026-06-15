@@ -1,3 +1,8 @@
+"""
+shared/state.py
+Persists only the timestamp of the last successful run in Azure Blob Storage.
+"""
+
 import json
 import logging
 import os
