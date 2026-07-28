@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+
+    "AZURE_TENANT_ID":     "<your-tenant-id>",
+    "AZURE_CLIENT_ID":     "<EmailWebHook-app-registration-client-id>",
+    "AZURE_CLIENT_SECRET": "<EmailWebHook-client-secret>",
+
+    "ENDPOINT_URL": "https://your-endpoint.example.com/api/emails",
+    "ENDPOINT_JWT": "<your-jwt-token>",
+
+    "COMMUNICATION_SERVICES_CONNECTION_STRING": "<your-acs-connection-string>",
+    "EMAIL_SENDER_ADDRESS": "DoNotReply@<your-acs-domain>.azurecomm.net"
+  }
+}
